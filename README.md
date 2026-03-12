@@ -19,6 +19,7 @@ BullshitBench measures whether models detect nonsense, call it out clearly, and 
 - Simplified the visible model labels in the viewers by dropping the `Beta` suffix from the Grok 4.20 display names while keeping the underlying model IDs unchanged.
 - Refined the main chart row-selection treatment to make model selection easier to see without overpowering the chart.
 - Updated org color mapping so `xAI` renders in black and `OpenAI` renders in green in the viewers.
+- Added click-to-pin labels for scatter-chart dots in the v2 viewer so specific models can be called out on demand.
 - Full details: [CHANGELOG.md](CHANGELOG.md)
 
 ## v2 Changelog Highlights

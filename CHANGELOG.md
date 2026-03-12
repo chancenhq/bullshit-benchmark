@@ -2,6 +2,14 @@
 
 All notable benchmark, data, and viewer changes are tracked in this file.
 
+## [2.0.5] - 2026-03-12
+
+### Added
+- Added click-to-pin labels for scatter-chart dots in the v2 viewer, including the release-date, reasoning, and model-size charts.
+
+### Changed
+- Selected scatter points now render with stronger dot and label styling so pinned annotations remain visible on dense charts.
+
 ## [2.0.4] - 2026-03-12
 
 ### Added

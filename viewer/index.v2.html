@@ -623,6 +623,19 @@
 
     /* Cost scatter */
     .scatter-svg { width: 100%; height: auto; display: block; }
+    .scatter-point {
+      cursor: pointer;
+      transition: r 120ms ease, stroke-width 120ms ease, fill-opacity 120ms ease, filter 120ms ease;
+    }
+    .scatter-point:hover {
+      filter: drop-shadow(0 2px 6px rgba(24, 37, 49, 0.18));
+    }
+    .scatter-point.is-selected {
+      filter: drop-shadow(0 3px 8px rgba(24, 37, 49, 0.22));
+    }
+    .scatter-point:focus-visible {
+      outline: none;
+    }
     .chart-legend {
       display: flex;
       flex-wrap: wrap;
@@ -1626,6 +1639,7 @@ const S = {
   rows: [], filteredRows: [], responses: [], aggregateRows: [],
   questionMap: new Map(), usageByModel: new Map(), paramsByModel: new Map(),
   hiddenModels: new Set(), selectedMainChartModels: new Set(), selectedJudges: new Set([1,2,3]),
+  selectedScatterPoints: {},
   modelChartFocusOrg: "all",
   reasoningScatterMode: "tokens",
   topVariantsOnly: false,
@@ -2756,9 +2770,16 @@ function placeLabelsGreedy(points, opts = {}) {
   const lineSegs = opts.lineSegments || [];
   const obstaclePoints = opts.obstaclePoints || points;
   const maxLabels = opts.maxLabels || points.length;
+  const priorityFn = typeof opts.priorityFn === "function"
+    ? opts.priorityFn
+    : (point => Number(point?.greenRate) || 0);
 
-  // Sort by greenRate descending (most important first)
-  const sorted = points.slice().sort((a,b) => b.greenRate - a.greenRate);
+  // Sort by configured priority descending (most important first)
+  const sorted = points.slice().sort((a,b) => {
+    const priorityDelta = priorityFn(b) - priorityFn(a);
+    if (Math.abs(priorityDelta) > 1e-9) return priorityDelta;
+    return (Number(b?.greenRate) || 0) - (Number(a?.greenRate) || 0);
+  });
 
   // Collect all dot positions as obstacles
   const dotBoxes = obstaclePoints.map(p => ({ x: p._cx - dotR, y: p._cy - dotR, w: dotR*2, h: dotR*2 }));
@@ -2916,6 +2937,54 @@ function scatterPointKey(p) {
   const r = Number.isFinite(Number(p?.avgReasoning)) ? Math.round(Number(p.avgReasoning)) : "";
   const c = Number.isFinite(Number(p?.avgCost)) ? Number(p.avgCost).toFixed(5) : "";
   return `${normOrg(p?.org)}|${String(p?.label || "")}|${t}|${r}|${c}|${Number(p?.greenRate || 0).toFixed(2)}`;
+}
+
+function selectedScatterPointSet(chartId) {
+  const key = String(chartId || "");
+  if (!key) return new Set();
+  if (!(S.selectedScatterPoints[key] instanceof Set)) {
+    S.selectedScatterPoints[key] = new Set();
+  }
+  return S.selectedScatterPoints[key];
+}
+
+function annotateScatterPoints(chartId, points) {
+  const selected = selectedScatterPointSet(chartId);
+  points.forEach((point) => {
+    point._scatterKey = scatterPointKey(point);
+    point._pinnedLabel = selected.has(point._scatterKey);
+  });
+}
+
+function mergePinnedScatterLabelPoints(points, autoCandidates) {
+  const merged = [];
+  const seen = new Set();
+  const push = (point) => {
+    if (!point) return;
+    const key = point._scatterKey || scatterPointKey(point);
+    if (seen.has(key)) return;
+    seen.add(key);
+    merged.push(point);
+  };
+  points.forEach((point) => {
+    if (point._pinnedLabel) push(point);
+  });
+  autoCandidates.forEach(push);
+  return merged;
+}
+
+function scatterLabelPriority(point) {
+  return (point?._pinnedLabel ? 100000 : 0) + (Number(point?.greenRate) || 0);
+}
+
+function renderScatterCircle(point, chartId, opts = {}) {
+  const radius = point._pinnedLabel ? (opts.selectedRadius || 5.4) : (opts.radius || 4.5);
+  const fillOpacity = point._pinnedLabel ? (opts.selectedFillOpacity || 0.96) : (opts.fillOpacity || 0.85);
+  const stroke = point._pinnedLabel ? (opts.selectedStroke || "#fffefb") : (opts.stroke || "#17211e");
+  const strokeOpacity = point._pinnedLabel ? (opts.selectedStrokeOpacity || 0.95) : (opts.strokeOpacity || 0.3);
+  const strokeWidth = point._pinnedLabel ? (opts.selectedStrokeWidth || 1.8) : (opts.strokeWidth || 0.8);
+  const ariaLabel = `${point._pinnedLabel ? "Hide" : "Show"} label for ${point.label}`;
+  return `<circle class="scatter-point${point._pinnedLabel ? " is-selected" : ""}" data-scatter-chart="${esc(chartId)}" data-scatter-point-key="${esc(point._scatterKey)}" tabindex="0" role="button" aria-pressed="${point._pinnedLabel ? "true" : "false"}" aria-label="${esc(ariaLabel)}" cx="${point._cx.toFixed(1)}" cy="${point._cy.toFixed(1)}" r="${radius.toFixed(1)}" fill="${orgColor(point.org)}" fill-opacity="${fillOpacity}" stroke="${esc(stroke)}" stroke-opacity="${strokeOpacity}" stroke-width="${strokeWidth}"/>`;
 }
 
 function selectReleaseScatterLabelPoints(points, maxLabels = 10) {
@@ -3077,18 +3146,20 @@ function renderAllModelsScatter(filtered) {
 
   // Dots + selective standout labels
   points.forEach(p => { p._cx = xFor(p.launchDate.getTime()); p._cy = yFor(p.greenRate); });
-  const dots = points.map(p => `<circle cx="${p._cx.toFixed(1)}" cy="${p._cy.toFixed(1)}" r="4.5" fill="${orgColor(p.org)}" fill-opacity="0.85" stroke="#17211e" stroke-opacity="0.2" stroke-width="0.8"/>`).join("");
-  const labelCandidates = selectReleaseScatterLabelPoints(points, 10);
+  annotateScatterPoints("allModelsScatter", points);
+  const dots = points.map(p => renderScatterCircle(p, "allModelsScatter", { strokeOpacity: 0.2 })).join("");
+  const labelCandidates = mergePinnedScatterLabelPoints(points, selectReleaseScatterLabelPoints(points, 10));
   const labelPlacements = placeLabelsGreedy(labelCandidates, {
     fontSize: 8.6, svgW: W, svgH: H, ml, mr, mt, mb,
-    obstaclePoints: points, maxLabels: labelCandidates.length, dotRadius: 4, padding: 1.6
+    obstaclePoints: points, maxLabels: labelCandidates.length, dotRadius: 4, padding: 1.6,
+    priorityFn: scatterLabelPriority,
   });
   const labelHalo = labelPlacements.map(lp =>
-    `<circle cx="${lp.point._cx.toFixed(1)}" cy="${lp.point._cy.toFixed(1)}" r="5.6" fill="none" stroke="${orgColor(lp.point.org)}" stroke-opacity="0.45" stroke-width="1"/>`
+    `<circle cx="${lp.point._cx.toFixed(1)}" cy="${lp.point._cy.toFixed(1)}" r="${lp.point._pinnedLabel ? "6.4" : "5.6"}" fill="none" stroke="${orgColor(lp.point.org)}" stroke-opacity="${lp.point._pinnedLabel ? "0.7" : "0.45"}" stroke-width="${lp.point._pinnedLabel ? "1.4" : "1"}"/>`
   ).join("");
   const labelsHtml = labelPlacements.map(lp => {
     const label = launchChartModelLabel(lp.point.label);
-    return `<text x="${lp.x.toFixed(1)}" y="${lp.y.toFixed(1)}" text-anchor="${lp.anchor||'start'}" fill="#2b3b36" font-size="8.6" font-weight="620" opacity="0.95" stroke="#fffefb" stroke-width="2.1" paint-order="stroke">${esc(label)}</text>`;
+    return `<text x="${lp.x.toFixed(1)}" y="${lp.y.toFixed(1)}" text-anchor="${lp.anchor||'start'}" fill="${lp.point._pinnedLabel ? "#1c2b3b" : "#2b3b36"}" font-size="${lp.point._pinnedLabel ? "9.2" : "8.6"}" font-weight="${lp.point._pinnedLabel ? "700" : "620"}" opacity="0.97" stroke="#fffefb" stroke-width="${lp.point._pinnedLabel ? "2.4" : "2.1"}" paint-order="stroke">${esc(label)}</text>`;
   }).join("");
 
   svg.innerHTML = `${gridY}${gridX}${trendHtml}${dots}${labelHalo}${labelsHtml}
@@ -3283,17 +3354,31 @@ function renderLaunchAllOrgs(filtered) {
 
   // Dots + labels
   points.forEach(p => { p._cx = xFor(p.launchDate.getTime()); p._cy = yFor(p.greenRate); });
-  const dots = points.map(p => `<circle cx="${p._cx.toFixed(1)}" cy="${p._cy.toFixed(1)}" r="5" fill="${orgColor(p.org)}" fill-opacity="0.9" stroke="#fff" stroke-width="1.2"/>`).join("");
+  annotateScatterPoints("launchAllOrgs", points);
+  const dots = points.map(p => renderScatterCircle(p, "launchAllOrgs", {
+    radius: 5,
+    selectedRadius: 5.8,
+    fillOpacity: 0.9,
+    selectedFillOpacity: 0.98,
+    stroke: "#fff",
+    selectedStroke: "#10211c",
+    strokeOpacity: 1,
+    selectedStrokeOpacity: 0.95,
+    strokeWidth: 1.2,
+    selectedStrokeWidth: 1.8,
+  })).join("");
 
   // Label placement — exclude the last point per org (already labeled at line end)
   const lastPtSet = new Set([...lastPointPerOrg.values()]);
-  const labelPoints = points.filter(p => !lastPtSet.has(p)).map(p => ({ ...p, label: launchChartModelLabel(p.label) }));
+  const labelPoints = points.filter(p => p._pinnedLabel || !lastPtSet.has(p));
   const labelPlacements = placeLabelsGreedy(labelPoints, {
     fontSize: 10, svgW: W, svgH: H, ml, mr: mr + 120, mt, mb,
-    lineSegments: allLineSegs, dotRadius: 6, padding: 3
+    lineSegments: allLineSegs, dotRadius: 6, padding: 3,
+    priorityFn: scatterLabelPriority,
   });
   const labelsHtml = labelPlacements.map(lp => {
-    return `<text x="${lp.x.toFixed(1)}" y="${lp.y.toFixed(1)}" text-anchor="${lp.anchor||'start'}" fill="#2b3b36" font-size="10" font-weight="580" opacity="0.9" stroke="#fffefb" stroke-width="1.7" paint-order="stroke">${esc(lp.point.label)}</text>`;
+    const label = launchChartModelLabel(lp.point.label);
+    return `<text x="${lp.x.toFixed(1)}" y="${lp.y.toFixed(1)}" text-anchor="${lp.anchor||'start'}" fill="${lp.point._pinnedLabel ? "#1c2b3b" : "#2b3b36"}" font-size="${lp.point._pinnedLabel ? "10.6" : "10"}" font-weight="${lp.point._pinnedLabel ? "700" : "580"}" opacity="0.95" stroke="#fffefb" stroke-width="${lp.point._pinnedLabel ? "2.1" : "1.7"}" paint-order="stroke">${esc(label)}</text>`;
   }).join("");
 
   svg.innerHTML = `${gridY}${gridX}${lines}${dots}${labelsHtml}${orgEndLabels}
@@ -3404,22 +3489,22 @@ function renderReasoningScatter(filtered) {
   }
 
   points.forEach(p => { p._cx = xFor(p[metricKey]); p._cy = yFor(p.greenRate); });
+  annotateScatterPoints("reasoningScatter", points);
 
   // Dots + selective standout labels
-  const circles = points.map(p => {
-    return `<circle cx="${p._cx.toFixed(1)}" cy="${p._cy.toFixed(1)}" r="4.5" fill="${orgColor(p.org)}" fill-opacity="0.85" stroke="#17211e" stroke-opacity="0.3" stroke-width="0.8"/>`;
-  }).join("");
-  const labelCandidates = selectReasoningScatterLabelPoints(points, 9, metricKey);
+  const circles = points.map(p => renderScatterCircle(p, "reasoningScatter")).join("");
+  const labelCandidates = mergePinnedScatterLabelPoints(points, selectReasoningScatterLabelPoints(points, 9, metricKey));
   const labelPlacements = placeLabelsGreedy(labelCandidates, {
     fontSize: 8.6, svgW: W, svgH: H, ml, mr, mt, mb,
-    obstaclePoints: points, maxLabels: labelCandidates.length, dotRadius: 4, padding: 1.6
+    obstaclePoints: points, maxLabels: labelCandidates.length, dotRadius: 4, padding: 1.6,
+    priorityFn: scatterLabelPriority,
   });
   const labelHalo = labelPlacements.map(lp =>
-    `<circle cx="${lp.point._cx.toFixed(1)}" cy="${lp.point._cy.toFixed(1)}" r="5.6" fill="none" stroke="${orgColor(lp.point.org)}" stroke-opacity="0.45" stroke-width="1"/>`
+    `<circle cx="${lp.point._cx.toFixed(1)}" cy="${lp.point._cy.toFixed(1)}" r="${lp.point._pinnedLabel ? "6.4" : "5.6"}" fill="none" stroke="${orgColor(lp.point.org)}" stroke-opacity="${lp.point._pinnedLabel ? "0.7" : "0.45"}" stroke-width="${lp.point._pinnedLabel ? "1.4" : "1"}"/>`
   ).join("");
   const labelsHtml = labelPlacements.map(lp => {
     const label = launchChartModelLabel(lp.point.label);
-    return `<text x="${lp.x.toFixed(1)}" y="${lp.y.toFixed(1)}" text-anchor="${lp.anchor||'start'}" fill="#2b3b36" font-size="8.6" font-weight="620" opacity="0.95" stroke="#fffefb" stroke-width="2.1" paint-order="stroke">${esc(label)}</text>`;
+    return `<text x="${lp.x.toFixed(1)}" y="${lp.y.toFixed(1)}" text-anchor="${lp.anchor||'start'}" fill="${lp.point._pinnedLabel ? "#1c2b3b" : "#2b3b36"}" font-size="${lp.point._pinnedLabel ? "9.2" : "8.6"}" font-weight="${lp.point._pinnedLabel ? "700" : "620"}" opacity="0.97" stroke="#fffefb" stroke-width="${lp.point._pinnedLabel ? "2.4" : "2.1"}" paint-order="stroke">${esc(label)}</text>`;
   }).join("");
 
   svg.innerHTML = `${gridLines}${xGridLines}${trendHtml}${circles}${labelHalo}${labelsHtml}
@@ -3512,18 +3597,20 @@ function renderSizeScatterChart(filtered, options) {
   }
 
   points.forEach(p => { p._cx = xFor(p[metricKey]); p._cy = yFor(p.greenRate); });
-  const circles = points.map(p => `<circle cx="${p._cx.toFixed(1)}" cy="${p._cy.toFixed(1)}" r="4.5" fill="${orgColor(p.org)}" fill-opacity="0.85" stroke="#17211e" stroke-opacity="0.3" stroke-width="0.8"/>`).join("");
-  const labelCandidates = selectReasoningScatterLabelPoints(points, 8, metricKey);
+  annotateScatterPoints(options.svgId, points);
+  const circles = points.map(p => renderScatterCircle(p, options.svgId)).join("");
+  const labelCandidates = mergePinnedScatterLabelPoints(points, selectReasoningScatterLabelPoints(points, 8, metricKey));
   const labelPlacements = placeLabelsGreedy(labelCandidates, {
     fontSize: 8.6, svgW: W, svgH: H, ml, mr, mt, mb,
     obstaclePoints: points, maxLabels: labelCandidates.length, dotRadius: 4, padding: 1.6,
+    priorityFn: scatterLabelPriority,
   });
   const labelHalo = labelPlacements.map(lp =>
-    `<circle cx="${lp.point._cx.toFixed(1)}" cy="${lp.point._cy.toFixed(1)}" r="5.6" fill="none" stroke="${orgColor(lp.point.org)}" stroke-opacity="0.45" stroke-width="1"/>`
+    `<circle cx="${lp.point._cx.toFixed(1)}" cy="${lp.point._cy.toFixed(1)}" r="${lp.point._pinnedLabel ? "6.4" : "5.6"}" fill="none" stroke="${orgColor(lp.point.org)}" stroke-opacity="${lp.point._pinnedLabel ? "0.7" : "0.45"}" stroke-width="${lp.point._pinnedLabel ? "1.4" : "1"}"/>`
   ).join("");
   const labelsHtml = labelPlacements.map(lp => {
     const label = launchChartModelLabel(lp.point.label);
-    return `<text x="${lp.x.toFixed(1)}" y="${lp.y.toFixed(1)}" text-anchor="${lp.anchor||"start"}" fill="#2b3b36" font-size="8.6" font-weight="620" opacity="0.95" stroke="#fffefb" stroke-width="2.1" paint-order="stroke">${esc(label)}</text>`;
+    return `<text x="${lp.x.toFixed(1)}" y="${lp.y.toFixed(1)}" text-anchor="${lp.anchor||"start"}" fill="${lp.point._pinnedLabel ? "#1c2b3b" : "#2b3b36"}" font-size="${lp.point._pinnedLabel ? "9.2" : "8.6"}" font-weight="${lp.point._pinnedLabel ? "700" : "620"}" opacity="0.97" stroke="#fffefb" stroke-width="${lp.point._pinnedLabel ? "2.4" : "2.1"}" paint-order="stroke">${esc(label)}</text>`;
   }).join("");
 
   svg.innerHTML = `${gridLines}${xGridLines}${trendHtml}${circles}${labelHalo}${labelsHtml}
@@ -3931,6 +4018,29 @@ function bindEvents() {
     if (!id) return;
     S.legendExpanded[id] = btn.getAttribute("data-next") === "expand";
     renderAll();
+  });
+
+  // Scatter point labels
+  const toggleScatterPointLabel = (target) => {
+    if (!(target instanceof Element)) return false;
+    const point = target.closest(".scatter-point[data-scatter-chart][data-scatter-point-key]");
+    if (!point) return false;
+    const chartId = String(point.getAttribute("data-scatter-chart") || "");
+    const pointKey = String(point.getAttribute("data-scatter-point-key") || "");
+    if (!chartId || !pointKey) return false;
+    const selected = selectedScatterPointSet(chartId);
+    if (selected.has(pointKey)) selected.delete(pointKey);
+    else selected.add(pointKey);
+    renderAll();
+    return true;
+  };
+  document.addEventListener("click", e => {
+    toggleScatterPointLabel(e.target);
+  });
+  document.addEventListener("keydown", e => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    if (!toggleScatterPointLabel(e.target)) return;
+    e.preventDefault();
   });
 
   // Reasoning scatter mode toggle (tokens vs cost)
