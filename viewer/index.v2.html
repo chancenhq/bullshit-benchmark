@@ -23,6 +23,7 @@
       --error: #505856;
       --shadow: 0 1px 2px rgba(20, 35, 30, 0.06);
       --radius: 10px;
+      --hero-pin-offset: 0px;
     }
 
     * { box-sizing: border-box; }
@@ -118,6 +119,69 @@
       gap: 10px;
       text-align: right;
       align-self: stretch;
+    }
+    .hero-meta-top {
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+      width: 100%;
+    }
+    .hero-pin-toggle {
+      appearance: none;
+      border: 1px solid transparent;
+      background: transparent;
+      color: #f6fbf9;
+      border-radius: 999px;
+      padding: 0;
+      width: 28px;
+      height: 28px;
+      min-width: 28px;
+      min-height: 28px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      opacity: 0.72;
+      box-shadow: none;
+      transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease, opacity 140ms ease;
+    }
+    .hero-pin-toggle:hover {
+      opacity: 1;
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(232, 241, 236, 0.16);
+    }
+    .hero-pin-toggle:focus-visible {
+      outline: 2px solid rgba(255, 255, 255, 0.36);
+      outline-offset: 2px;
+      opacity: 1;
+    }
+    .hero-pin-toggle.is-active {
+      opacity: 1;
+      background: rgba(236, 244, 240, 0.16);
+      border-color: rgba(236, 244, 240, 0.24);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.14),
+        0 0 0 1px rgba(236, 244, 240, 0.04);
+    }
+    .hero-pin-toggle svg {
+      width: 13px;
+      height: 13px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.7;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      flex: 0 0 auto;
+    }
+    .hero.is-pinned {
+      position: sticky;
+      top: 0;
+      z-index: 120;
+      box-shadow:
+        0 10px 24px rgba(20, 35, 30, 0.14),
+        var(--shadow);
     }
     .hero-version-inline select {
       appearance: none;
@@ -243,7 +307,7 @@
 
     /* Sticky domain bar */
     .domain-bar {
-      position: sticky; top: 0; z-index: 95;
+      position: sticky; top: var(--hero-pin-offset); z-index: 95;
       background: var(--panel);
       border: 1px solid var(--line);
       border-radius: var(--radius);
@@ -1074,6 +1138,7 @@
       .compare-controls { grid-template-columns: 1fr; }
       .hero { grid-template-columns: 1fr; }
       .hero-meta { align-items: flex-start; justify-content: flex-start; text-align: left; width: 100%; }
+      .hero-meta-top { justify-content: flex-start; }
       .hero-links { align-items: flex-start; justify-content: flex-start; }
       .hero-title-row { align-items: flex-start; }
     }
@@ -1085,7 +1150,7 @@
       .hero-title-row { gap: 8px; }
       .hero-version-inline { width: 100%; }
       .hero-version-inline select { width: min(180px, 100%); }
-      .domain-bar { padding: 10px 12px; top: 0; }
+      .domain-bar { padding: 10px 12px; top: var(--hero-pin-offset); }
       .panel { padding: 12px; }
       .tech-bar-row { grid-template-columns: 150px 1fr 44px 18px; gap: 5px; }
       .tech-bar-label { font-size: 0.78rem; }
@@ -1097,7 +1162,7 @@
 <body>
   <div class="page">
     <!-- Compact Header -->
-    <header class="hero">
+    <header class="hero" id="heroPanel">
       <div class="hero-left">
         <img class="hero-logo" src="../docs/images/bsbench.png" alt="BullshitBench logo">
         <div class="hero-body">
@@ -1115,7 +1180,15 @@
         </div>
       </div>
       <div class="hero-meta">
-        <span class="hero-created">By Peter Gostev</span>
+        <div class="hero-meta-top">
+          <button type="button" id="heroPinToggle" class="hero-pin-toggle" aria-pressed="false" aria-label="Pin BullshitBench panel to top" title="Pin BullshitBench panel to top">
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M10.5 2.5 13 5l-3 .8-.9 3.9-.8-3.1-3.1-.8 2.5-2.5"></path>
+              <path d="M8 9.5v4"></path>
+            </svg>
+          </button>
+          <span class="hero-created">By Peter Gostev</span>
+        </div>
         <nav class="hero-links" aria-label="Project links">
           <a class="hero-link" href="https://x.com/petergostev" target="_blank" rel="noopener noreferrer">X</a>
           <a class="hero-link" href="https://www.linkedin.com/in/peter-gostev/" target="_blank" rel="noopener noreferrer">LinkedIn</a>
@@ -1587,7 +1660,7 @@ const ORG_COLORS = {
   "x-ai": "#111111", mistralai: "#ec4899", deepseek: "#06b6d4",
   "bytedance-seed": "#0ea5e9", xiaomi: "#ff6900", qwen: "#7c3aed",
   moonshotai: "#0284c7", minimax: "#14b8a6", baidu: "#1d4ed8",
-  "prime-intellect": "#64748b", "z-ai": "#0f766e",
+  "prime-intellect": "#64748b", "z-ai": "#0f766e", stealth: "#6b7280",
 };
 const ORG_NAMES = {
   anthropic: "Anthropic", openai: "OpenAI", google: "Google",
@@ -1595,7 +1668,7 @@ const ORG_NAMES = {
   "x-ai": "xAI", mistralai: "Mistral", deepseek: "DeepSeek",
   "bytedance-seed": "ByteDance", xiaomi: "Xiaomi", qwen: "Qwen",
   moonshotai: "Moonshot AI", minimax: "MiniMax", baidu: "Baidu",
-  "prime-intellect": "Prime Intellect", "z-ai": "Z.AI",
+  "prime-intellect": "Prime Intellect", "z-ai": "Z.AI", stealth: "Stealth",
 };
 const DOMAIN_GROUP_LABELS = {
   legal: "Legal", medical: "Medical", software: "Software", finance: "Finance", physics: "Physics",
@@ -1643,6 +1716,7 @@ const S = {
   modelChartFocusOrg: "all",
   reasoningScatterMode: "tokens",
   topVariantsOnly: false,
+  heroPinned: false,
   drilldown: null, lbSort: { key: "greenRate", direction: "desc" },
   tokenSort: "total",
   techniqueSeed: Math.floor(Math.random() * 1e9),
@@ -1704,6 +1778,7 @@ function buildLogTicks(minValue, maxValue) {
 
 function normOrg(v) {
   const normalized = String(v || "unknown").trim().toLowerCase();
+  if (normalized === "steath") return "stealth";
   return normalized === "meta-llama" ? "meta" : normalized;
 }
 function orgColor(o) { const n=normOrg(o); return ORG_COLORS[n] || `hsl(${Math.abs(hashStr(n))%360} 60% 42%)`; }
@@ -1819,6 +1894,39 @@ function applyBenchmarkPresentation() {
   if (domainBar) domainBar.classList.toggle("hidden-block", !cfg.showDomainGroup);
   if (domainSection) domainSection.classList.toggle("hidden-block", !cfg.showDomainHeatmap);
   if (domainInsightsSection) domainInsightsSection.classList.toggle("hidden-block", !cfg.showDomainInsights);
+  syncHeroPinState();
+}
+
+let heroPinResizeObserver = null;
+
+function updateHeroPinOffset() {
+  const hero = document.getElementById("heroPanel");
+  const offset = S.heroPinned && hero ? Math.ceil(hero.getBoundingClientRect().height + 10) : 0;
+  document.documentElement.style.setProperty("--hero-pin-offset", `${offset}px`);
+}
+
+function syncHeroPinState() {
+  const hero = document.getElementById("heroPanel");
+  const toggle = document.getElementById("heroPinToggle");
+  if (hero) hero.classList.toggle("is-pinned", !!S.heroPinned);
+  if (toggle) {
+    toggle.classList.toggle("is-active", !!S.heroPinned);
+    toggle.setAttribute("aria-pressed", S.heroPinned ? "true" : "false");
+    const nextLabel = S.heroPinned ? "Unpin BullshitBench panel from top" : "Pin BullshitBench panel to top";
+    toggle.setAttribute("title", nextLabel);
+    toggle.setAttribute("aria-label", nextLabel);
+  }
+  updateHeroPinOffset();
+}
+
+function observeHeroPinPanel() {
+  const hero = document.getElementById("heroPanel");
+  if (!hero || typeof ResizeObserver === "undefined") return;
+  if (heroPinResizeObserver) heroPinResizeObserver.disconnect();
+  heroPinResizeObserver = new ResizeObserver(() => {
+    updateHeroPinOffset();
+  });
+  heroPinResizeObserver.observe(hero);
 }
 
 // ====== PARSING ======
@@ -3994,6 +4102,15 @@ function bindEvents() {
     });
   }
 
+  const heroPinToggle = document.getElementById("heroPinToggle");
+  if (heroPinToggle) {
+    heroPinToggle.addEventListener("click", () => {
+      S.heroPinned = !S.heroPinned;
+      syncHeroPinState();
+    });
+  }
+  window.addEventListener("resize", updateHeroPinOffset);
+
   // Filters
   ["filterOrg","filterReasoning","filterTechnique","filterDomainGroup","filterDifficulty","filterQuery","compareQuestion","compareModelA","compareModelB","compareViewMode"].forEach(id=>{
     const el=document.getElementById(id);
@@ -4182,6 +4299,8 @@ function init() {
   applyBenchmarkPresentation();
   buildScoreFilter();
   bindEvents();
+  observeHeroPinPanel();
+  syncHeroPinState();
   loadData().then(()=>renderHeroBadges());
 }
 init();

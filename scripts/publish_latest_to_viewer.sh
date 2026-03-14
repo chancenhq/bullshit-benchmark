@@ -538,15 +538,17 @@ generated_at_utc="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 responses_count="$(wc -l < "${OUTPUT_DIR}/responses.jsonl" | tr -d ' ')"
 aggregate_row_count="$(wc -l < "${OUTPUT_DIR}/aggregate.jsonl" | tr -d ' ')"
 
-python3 - <<'PY' "${OUTPUT_DIR}/aggregate_summary.json" "${OUTPUT_DIR}/leaderboard.csv"
+python3 - <<'PY' "${OUTPUT_DIR}/aggregate_summary.json" "${OUTPUT_DIR}/aggregate.jsonl" "${OUTPUT_DIR}/leaderboard.csv"
 import csv
 import json
 import pathlib
 import re
 import sys
+from collections import Counter, defaultdict
 
 summary_path = pathlib.Path(sys.argv[1])
-csv_path = pathlib.Path(sys.argv[2])
+aggregate_rows_path = pathlib.Path(sys.argv[2])
+csv_path = pathlib.Path(sys.argv[3])
 
 summary = json.loads(summary_path.read_text(encoding="utf-8"))
 rows = summary.get("leaderboard", [])
@@ -566,21 +568,49 @@ fieldnames = [
     "error_count",
 ]
 
+def normalize_org(org: str) -> str:
+    text = str(org or "").strip() or "unknown"
+    if text == "meta-llama":
+        return "meta"
+    return text
+
 def parse_parts(model: str) -> tuple[str, str]:
     text = str(model or "")
-    org = text.split("/", 1)[0] if "/" in text else "unknown"
-    if org == "meta-llama":
-        org = "meta"
+    org = normalize_org(text.split("/", 1)[0] if "/" in text else "unknown")
     match = re.search(r"@reasoning=([^@]+)$", text)
     reasoning = match.group(1) if match else "default"
     return org, reasoning
+
+org_votes: dict[str, Counter[str]] = defaultdict(Counter)
+if aggregate_rows_path.exists():
+    with aggregate_rows_path.open("r", encoding="utf-8") as handle:
+        for raw_line in handle:
+            line = raw_line.strip()
+            if not line:
+                continue
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            model = str(row.get("model", "")).strip()
+            org = normalize_org(str(row.get("model_org", "")).strip())
+            if model and org:
+                org_votes[model][org] += 1
+
+def preferred_org(model: str) -> str:
+    votes = org_votes.get(model)
+    if votes:
+        return votes.most_common(1)[0][0]
+    org, _ = parse_parts(model)
+    return org
 
 with csv_path.open("w", encoding="utf-8", newline="") as handle:
     writer = csv.DictWriter(handle, fieldnames=fieldnames)
     writer.writeheader()
     for idx, row in enumerate(rows, start=1):
         model = str(row.get("model", ""))
-        org, reasoning = parse_parts(model)
+        _, reasoning = parse_parts(model)
+        org = preferred_org(model)
         writer.writerow(
             {
                 "rank": idx,

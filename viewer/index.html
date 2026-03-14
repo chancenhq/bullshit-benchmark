@@ -1809,6 +1809,7 @@
       baidu: "#1d4ed8",
       "prime-intellect": "#64748b",
       "z-ai": "#0f766e",
+      stealth: "#6b7280",
     };
     const ORG_NAME_OVERRIDES = {
       anthropic: "Anthropic",
@@ -1828,6 +1829,7 @@
       baidu: "Baidu",
       "prime-intellect": "Prime Intellect",
       "z-ai": "Z.AI",
+      stealth: "Stealth",
     };
     const TECHNIQUE_LABELS = {
       authoritative_framing_of_nothing: "Confident Nonsense Framing",
@@ -1937,6 +1939,9 @@
 
     function normalizeOrg(value) {
       const normalized = String(value || "unknown").trim().toLowerCase();
+      if (normalized === "steath") {
+        return "stealth";
+      }
       if (normalized === "meta-llama") {
         return "meta";
       }
