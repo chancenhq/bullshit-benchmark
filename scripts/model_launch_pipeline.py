@@ -149,13 +149,12 @@ def normalize_model_id(value: Any) -> str:
     text = str(value or "").strip()
     if not text:
         return ""
-    return re.sub(r"@reasoning=[^@]+$", "", text)
+    text = re.sub(r"@reasoning=[^@]+$", "", text)
+    text = re.sub(r"-(default|none|minimal|low|medium|high|xhigh)$", "", text, flags=re.IGNORECASE)
+    return text
 
 
 def derive_variant(model: str, model_reasoning_level: Any) -> str:
-    raw = str(model or "").strip()
-    if raw:
-        return raw
     base = normalize_model_id(model)
     if not base:
         return ""
@@ -262,7 +261,7 @@ def add_observation(
     in_runs: bool = False,
 ) -> None:
     normalized = normalize_model_id(model_id)
-    if not normalized:
+    if not normalized or "/" not in normalized:
         return
     org = normalized.split("/", 1)[0] if "/" in normalized else "unknown"
     entry = model_map.setdefault(
@@ -316,7 +315,7 @@ def scan_inventory(
         for row in read_jsonl(path):
             model = str(row.get("model", "")).strip()
             model_id = normalize_model_id(row.get("model_id") or model)
-            variant = model or derive_variant(model_id, row.get("model_reasoning_level"))
+            variant = model if "@reasoning=" in model else derive_variant(model_id, row.get("model_reasoning_level"))
             add_observation(
                 model_map,
                 model_id,
@@ -330,7 +329,7 @@ def scan_inventory(
                 for row in read_jsonl(path):
                     model = str(row.get("model", "")).strip()
                     model_id = normalize_model_id(row.get("model_id") or model)
-                    variant = model or derive_variant(model_id, row.get("model_reasoning_level"))
+                    variant = model if "@reasoning=" in model else derive_variant(model_id, row.get("model_reasoning_level"))
                     add_observation(
                         model_map,
                         model_id,
@@ -361,7 +360,7 @@ def scan_inventory(
                         continue
                     model_label = str(variant_row.get("model_label", "")).strip()
                     model_id = normalize_model_id(variant_row.get("model_id") or model_label)
-                    variant = model_label or derive_variant(model_id, variant_row.get("model_reasoning_level"))
+                    variant = model_label if "@reasoning=" in model_label else derive_variant(model_id, variant_row.get("model_reasoning_level"))
                     add_observation(
                         model_map,
                         model_id,

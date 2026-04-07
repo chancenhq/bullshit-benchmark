@@ -1957,6 +1957,16 @@ function modelKey(r) { return r?.model || ""; }
 function normReasoning(v) { const r=String(v||"none").toLowerCase(); return r==="default"?"none":r; }
 
 const WORD_ALIAS = { gpt:"GPT", oss:"OSS", ai:"AI", it:"IT", glm:"GLM" };
+const MODEL_DISPLAY_ALIAS = Object.freeze({
+  "minimax-m2.5": "MiniMax M2.5",
+  "minimax-m2.7": "MiniMax M2.7",
+  "mistral-large-2512": "Mistral Large 3",
+  "mistral-small-2603": "Mistral Small 4",
+  "grok-4.20": "Grok 4.20",
+  "grok-4.20-beta": "Grok 4.20",
+  "grok-4.20-multi-agent": "Grok 4.20 Multi-Agent",
+  "grok-4.20-multi-agent-beta": "Grok 4.20 Multi-Agent",
+});
 function titleWord(t) { if(!t) return ""; const l=t.toLowerCase(); return WORD_ALIAS[l]||t.charAt(0).toUpperCase()+t.slice(1); }
 function stripDisplayModelSuffix(value) {
   return String(value || "").replace(/:free(?=@|$)/gi, "");
@@ -1979,6 +1989,7 @@ function prettyModel(r) {
   const suf=rl&&rl!=="none"?` (${rl.charAt(0).toUpperCase()+rl.slice(1)})`:"";
   if (rawNorm === "o3") return `o3${suf}`;
   if (rawNorm === "o4-mini" || rawNorm === "o4mini") return `o4-mini${suf}`;
+  if (MODEL_DISPLAY_ALIAS[rawNorm]) return `${MODEL_DISPLAY_ALIAS[rawNorm]}${suf}`;
   const mapped=tok.map(titleWord);
   if(mapped[0]==="GPT"&&tok[1]&&/^\d/.test(tok[1])) mapped.splice(0,2,`GPT-${tok[1]}`);
   return mapped.join(" ")+suf;
