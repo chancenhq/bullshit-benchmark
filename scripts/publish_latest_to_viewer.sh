@@ -176,6 +176,7 @@ aggregate_summary_out = output_dir / "aggregate_summary.json"
 recent_additions_out = output_dir / "recent_additions.json"
 model_launch_out = output_dir / "model_launch_dates.csv"
 model_params_out = output_dir / "model_params.csv"
+recent_window_days = 7
 
 path_pattern = re.compile(r"/Users/[^\s\"|]+")
 
@@ -373,6 +374,101 @@ def load_stats_if_exists(path: pathlib.Path):
             return {}
     return {}
 
+def parse_datetime(value):
+    text = str(value or "").strip()
+    if not text:
+        return None
+    if text.endswith("Z"):
+        text = text[:-1] + "+00:00"
+    try:
+        parsed = dt.datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=dt.UTC)
+    return parsed.astimezone(dt.UTC)
+
+def isoformat_utc(value):
+    if not isinstance(value, dt.datetime):
+        return ""
+    return value.astimezone(dt.UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+def row_first_seen_timestamp(row):
+    for key in (
+        "started_at_utc",
+        "finished_at_utc",
+        "completed_at_utc",
+        "timestamp_utc",
+        "created_at",
+        "collected_at_utc",
+    ):
+        parsed = parse_datetime(row.get(key))
+        if parsed is not None:
+            return parsed
+    return None
+
+def normalized_datetime_mapping(value):
+    if not isinstance(value, dict):
+        return {}
+    out = {}
+    for key, raw_value in value.items():
+        parsed = parse_datetime(raw_value)
+        text_key = str(key or "").strip()
+        if not text_key or parsed is None:
+            continue
+        out[text_key] = parsed
+    return out
+
+def derive_recent_additions(rows, existing_recent, window_days, publish_mode):
+    current_models, current_model_bases = collect_model_sets(rows)
+    model_first_seen = normalized_datetime_mapping(existing_recent.get("model_first_seen_utc"))
+    base_first_seen = normalized_datetime_mapping(existing_recent.get("model_base_first_seen_utc"))
+
+    for row in rows:
+        model = str(row.get("model", "")).strip()
+        if not model:
+            continue
+        base = re.sub(r"@reasoning=[^@]+$", "", model)
+        first_seen = row_first_seen_timestamp(row)
+        if first_seen is None:
+            continue
+        if model not in model_first_seen or first_seen < model_first_seen[model]:
+            model_first_seen[model] = first_seen
+        if base not in base_first_seen or first_seen < base_first_seen[base]:
+            base_first_seen[base] = first_seen
+
+    now_utc = dt.datetime.now(dt.UTC).replace(microsecond=0)
+    window_start = now_utc - dt.timedelta(days=max(1, int(window_days)))
+
+    recent_model_keys = sorted(
+        model for model in current_models
+        if (model_first_seen.get(model) is not None and model_first_seen[model] >= window_start)
+    )
+    recent_model_bases = sorted(
+        model for model in current_model_bases
+        if (base_first_seen.get(model) is not None and base_first_seen[model] >= window_start)
+    )
+
+    notes = (
+        f"Exact model variants first added to this dataset in the last {int(window_days)} days."
+    )
+    if publish_mode == "replace":
+        notes += " Replace publishes preserve first-seen timestamps when the prior sidecar is available."
+
+    return {
+        "generated_at_utc": isoformat_utc(now_utc),
+        "publish_mode": publish_mode,
+        "window_days": int(window_days),
+        "window_start_utc": isoformat_utc(window_start),
+        "models": recent_model_keys,
+        "model_bases": recent_model_bases,
+        "model_count": len(recent_model_keys),
+        "model_base_count": len(recent_model_bases),
+        "model_first_seen_utc": {key: isoformat_utc(model_first_seen[key]) for key in sorted(model_first_seen)},
+        "model_base_first_seen_utc": {key: isoformat_utc(base_first_seen[key]) for key in sorted(base_first_seen)},
+        "notes": notes,
+    }
+
 existing_dataset_present = responses_out.exists() and aggregate_out.exists()
 if requested_mode == "auto":
     mode = "supplemental" if existing_dataset_present else "replace"
@@ -411,36 +507,13 @@ for row in merged_responses:
     module.enrich_collect_record_metrics(row)
 
 merged_responses = slim_published_response_rows(merged_responses)
-
-incoming_model_keys, incoming_model_bases = collect_model_sets(incoming_aggregate_rows)
-existing_model_keys, existing_model_bases = collect_model_sets(existing_aggregate_rows)
-recent_additions_note = "Exact model variants newly added in the most recent publish."
-if mode == "replace":
-    recent_model_keys = sorted(incoming_model_keys)
-    recent_model_bases = sorted(incoming_model_bases)
-else:
-    recent_model_keys = sorted(model for model in incoming_model_keys if model not in existing_model_keys)
-    recent_model_bases = sorted(model for model in incoming_model_bases if model not in existing_model_bases)
-    if not recent_model_keys and not recent_model_bases:
-        existing_recent = load_stats_if_exists(recent_additions_out)
-        preserved_model_keys = (
-            sorted({str(v).strip() for v in existing_recent.get("models", []) if str(v).strip()})
-            if isinstance(existing_recent.get("models"), list)
-            else []
-        )
-        preserved_model_bases = (
-            sorted({str(v).strip() for v in existing_recent.get("model_bases", []) if str(v).strip()})
-            if isinstance(existing_recent.get("model_bases"), list)
-            else []
-        )
-        if preserved_model_keys or preserved_model_bases:
-            recent_model_keys = preserved_model_keys
-            recent_model_bases = preserved_model_bases
-            recent_additions_note = "Exact model variants preserved from the prior publish because this refresh replaced rows without introducing new models."
-        elif aggregate_added == 0 and aggregate_replaced > 0 and incoming_aggregate_rows:
-            recent_model_keys = sorted(incoming_model_keys)
-            recent_model_bases = sorted(incoming_model_bases)
-            recent_additions_note = "Exact model variants included in the incoming run payload. This publish refreshed metadata without adding new rows to the dataset."
+existing_recent = load_stats_if_exists(recent_additions_out)
+recent_additions = derive_recent_additions(
+    merged_responses,
+    existing_recent=existing_recent,
+    window_days=recent_window_days,
+    publish_mode=mode,
+)
 
 incoming_collection_stats = load_json(collection_stats_in)
 existing_collection_stats = (
@@ -567,18 +640,7 @@ write_json(collection_stats_out, collection_stats)
 write_json(panel_summary_out, panel_summary)
 write_json(aggregate_summary_out, aggregate_summary)
 write_jsonl(aggregate_out, merged_aggregate_rows)
-write_json(
-    recent_additions_out,
-    {
-        "generated_at_utc": dt.datetime.now(dt.UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
-        "publish_mode": mode,
-        "models": recent_model_keys,
-        "model_bases": recent_model_bases,
-        "model_count": len(recent_model_keys),
-        "model_base_count": len(recent_model_bases),
-        "notes": recent_additions_note,
-    },
-)
+write_json(recent_additions_out, recent_additions)
 
 if model_launch_canonical.exists():
     model_launch_out.write_text(model_launch_canonical.read_text(encoding="utf-8"), encoding="utf-8")

@@ -2000,7 +2000,7 @@ function isRecentAdditionModelKey(modelKeyValue) {
 function renderRecentBadgeHtml(modelKeyValue, compact = false) {
   if (!isRecentAdditionModelKey(modelKeyValue)) return "";
   const compactClass = compact ? " is-compact" : "";
-  return `<span class="model-badge model-badge-new model-badge-dot${compactClass}" title="Added in the most recent publish" aria-label="Added in the most recent publish" role="img"></span>`;
+  return `<span class="model-badge model-badge-new model-badge-dot${compactClass}" title="Added in the last 7 days" aria-label="Added in the last 7 days" role="img"></span>`;
 }
 const OPENAI_RESPONSE_PRICING_USD_PER_MILLION = Object.freeze({
   "openai/gpt-5.4-mini": Object.freeze({ input: 0.75, cachedInput: 0.075, output: 4.5 }),
@@ -2774,8 +2774,8 @@ function renderHeroBadges() {
   }
   const label = modelCount === 1 ? "1 new model" : `${modelCount} new models`;
   const title = variantCount && variantCount !== modelCount
-    ? `${modelCount} base models / ${variantCount} benchmark entries added in the most recent publish`
-    : `${label} added in the most recent publish`;
+    ? `${modelCount} base models / ${variantCount} benchmark entries added in the last 7 days`
+    : `${label} added in the last 7 days`;
   el.innerHTML = `<span class="hero-badge hero-badge-new" title="${esc(title)}" aria-label="${esc(title)}">${esc(label)}</span>`;
 }
 
