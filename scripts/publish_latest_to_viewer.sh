@@ -863,28 +863,79 @@ with output_path.open("w", encoding="utf-8", newline="") as handle:
         writer.writerow(out)
 PY
 
-cat > "${OUTPUT_DIR}/manifest.json" <<EOF
-{
-  "generated_at_utc": "${generated_at_utc}",
-  "sources": {
-    "responses_file": "${OUTPUT_DIR}/responses.jsonl",
-    "collection_stats_file": "${OUTPUT_DIR}/collection_stats.json",
-    "panel_summary_file": "${OUTPUT_DIR}/panel_summary.json",
-    "aggregate_summary_file": "${OUTPUT_DIR}/aggregate_summary.json",
-    "aggregate_rows_file": "${OUTPUT_DIR}/aggregate.jsonl",
-    "recent_additions_file": "${OUTPUT_DIR}/recent_additions.json"
-  },
-  "counts": {
-    "responses_rows": ${responses_count},
-    "aggregate_rows": ${aggregate_row_count}
-  },
-  "exports": {
-    "leaderboard_csv": "${OUTPUT_DIR}/leaderboard.csv",
-    "leaderboard_with_launch_csv": "${OUTPUT_DIR}/leaderboard_with_launch.csv",
-    "model_launch_dates_csv": "${OUTPUT_DIR}/model_launch_dates.csv",
-    "model_params_csv": "${OUTPUT_DIR}/model_params.csv"
-  }
+python3 - <<'PY' "${OUTPUT_DIR}" "${generated_at_utc}"
+import json
+import pathlib
+import sys
+
+output_dir = pathlib.Path(sys.argv[1])
+generated_at_utc = str(sys.argv[2] or "").strip()
+
+def jsonl_coverage(path: pathlib.Path) -> dict[str, int]:
+    total_rows = 0
+    rows_with_model_reasoning_level = 0
+    rows_with_response_reasoning_effort = 0
+    rows_with_response_usage = 0
+    rows_with_response_reasoning_tokens = 0
+
+    if path.exists():
+        with path.open("r", encoding="utf-8") as handle:
+            for raw_line in handle:
+                line = raw_line.strip()
+                if not line:
+                    continue
+                total_rows += 1
+                try:
+                    row = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if str(row.get("model_reasoning_level", "")).strip():
+                    rows_with_model_reasoning_level += 1
+                if "response_reasoning_effort" in row:
+                    rows_with_response_reasoning_effort += 1
+                if isinstance(row.get("response_usage"), dict):
+                    rows_with_response_usage += 1
+                if "response_reasoning_tokens" in row:
+                    rows_with_response_reasoning_tokens += 1
+
+    return {
+        "rows": total_rows,
+        "rows_with_model_reasoning_level": rows_with_model_reasoning_level,
+        "rows_with_response_reasoning_effort": rows_with_response_reasoning_effort,
+        "rows_with_response_usage": rows_with_response_usage,
+        "rows_with_response_reasoning_tokens": rows_with_response_reasoning_tokens,
+    }
+
+responses_rows = sum(1 for line in (output_dir / "responses.jsonl").open("r", encoding="utf-8") if line.strip())
+aggregate_rows = sum(1 for line in (output_dir / "aggregate.jsonl").open("r", encoding="utf-8") if line.strip())
+
+manifest = {
+    "generated_at_utc": generated_at_utc,
+    "sources": {
+        "responses_file": f"{output_dir}/responses.jsonl",
+        "collection_stats_file": f"{output_dir}/collection_stats.json",
+        "panel_summary_file": f"{output_dir}/panel_summary.json",
+        "aggregate_summary_file": f"{output_dir}/aggregate_summary.json",
+        "aggregate_rows_file": f"{output_dir}/aggregate.jsonl",
+        "recent_additions_file": f"{output_dir}/recent_additions.json",
+    },
+    "counts": {
+        "responses_rows": responses_rows,
+        "aggregate_rows": aggregate_rows,
+    },
+    "coverage": {
+        "responses": jsonl_coverage(output_dir / "responses.jsonl"),
+        "aggregate": jsonl_coverage(output_dir / "aggregate.jsonl"),
+    },
+    "exports": {
+        "leaderboard_csv": f"{output_dir}/leaderboard.csv",
+        "leaderboard_with_launch_csv": f"{output_dir}/leaderboard_with_launch.csv",
+        "model_launch_dates_csv": f"{output_dir}/model_launch_dates.csv",
+        "model_params_csv": f"{output_dir}/model_params.csv",
+    },
 }
-EOF
+
+(output_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+PY
 
 echo "Published viewer dataset to ${OUTPUT_DIR}"

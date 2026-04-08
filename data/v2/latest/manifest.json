@@ -12,6 +12,22 @@
     "responses_rows": 13000,
     "aggregate_rows": 13000
   },
+  "coverage": {
+    "responses": {
+      "rows": 13000,
+      "rows_with_model_reasoning_level": 13000,
+      "rows_with_response_reasoning_effort": 13000,
+      "rows_with_response_usage": 13000,
+      "rows_with_response_reasoning_tokens": 13000
+    },
+    "aggregate": {
+      "rows": 13000,
+      "rows_with_model_reasoning_level": 13000,
+      "rows_with_response_reasoning_effort": 13000,
+      "rows_with_response_usage": 0,
+      "rows_with_response_reasoning_tokens": 0
+    }
+  },
   "exports": {
     "leaderboard_csv": "data/v2/latest/leaderboard.csv",
     "leaderboard_with_launch_csv": "data/v2/latest/leaderboard_with_launch.csv",
