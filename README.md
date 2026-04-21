@@ -17,6 +17,7 @@ BullshitBench measures whether models detect nonsense, call it out clearly, and 
 - Published the new rows into both viewer tracks:
   - `v1` (`data/latest`) with `55` questions
   - `v2` (`data/v2/latest`) with `100` questions
+  - `v2-chancenhq` (`data/v2/chancenhq/latest`) with its dedicated question set
 - Re-ran `google/gemma-4-31b-it` on `v2` with matched-provider `none` and `high` reasoning settings so the public leaderboard reflects the clean same-provider comparison.
 - Added canonical launch-date and model-size metadata for the Gemma 4 and Trinity model families.
 - Updated the viewer publish pipeline to surface recent additions and keep the published JSONL files small enough for GitHub-hosted distribution.
@@ -108,6 +109,12 @@ Provider routing is configured per model via `collect.model_providers` and
 ./scripts/run_end_to_end.sh --config config.v2.json --viewer-output-dir data/v2/latest --with-additional-judges
 ```
 
+To run the chancenhq track:
+
+```bash
+./scripts/run_end_to_end.sh --config config.v2-chancenhq.json --viewer-output-dir data/v2/chancenhq/latest --with-additional-judges
+```
+
 4. Optionally run the default config end-to-end (publishes to `data/latest`):
 
 ```bash
@@ -124,13 +131,14 @@ Provider routing is configured per model via `collect.model_providers` and
 ```
 
 Then open `http://localhost:8877/viewer/index.v2.html`.
-Use the `Benchmark Version` dropdown in the filters panel to switch between published datasets (for example `v1` and `v2`).
+Use the `Benchmark Version` dropdown in the filters panel to switch between published datasets (for example `v1`, `v2`, and `v2-chancenhq`).
 
 ## Published Datasets
 
 - v1 dataset remains in `data/latest`.
 - v2 dataset is published in `data/v2/latest`.
-- v2 question set comes from `drafts/new-questions.md` via `scripts/build_questions_v2_from_draft.py`.
+- v2 dataset comes from `drafts/new-questions.md` via `scripts/build_questions_v2_from_draft.py`.
+- v2-chancenhq dataset comes from `drafts/new-questions.v2-chancenhq.md` via `scripts/build_questions_v2_from_draft.py` (use `--track v2-chancenhq`).
 - Canonical judging is now fixed to exactly 3 judges on every row with mean aggregation (legacy disagreement-tiebreak mode is retired from the main pipeline).
 - Release notes and notable changes are tracked in `CHANGELOG.md`.
 
@@ -140,8 +148,10 @@ Use the `Benchmark Version` dropdown in the filters panel to switch between publ
 - [Changelog](CHANGELOG.md): v1 to v2 release notes and publish-history highlights.
 - [Question Set](questions.json): benchmark questions and scoring metadata.
 - [Question Set v2](questions.v2.json): v2 question pool generated from `drafts/new-questions.md`.
+- [Question Set v2-chancenhq](questions.v2-chancenhq.json): chancenhq question pool generated from `drafts/new-questions.v2-chancenhq.md` via `scripts/build_questions_v2_from_draft.py --track v2-chancenhq`.
 - [Config](config.json): default model/pipeline settings.
 - [Config v2](config.v2.json): v2-ready config (uses `questions.v2.json`).
+- [Config v2-chancenhq](config.v2-chancenhq.json): v2-chancenhq-ready config (uses `questions.v2-chancenhq.json`).
 
 ## Notes
 

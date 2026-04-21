@@ -1338,6 +1338,7 @@
               <span>Version</span>
               <select id="benchmarkVersionSelect" aria-label="Benchmark version">
                 <option value="v2">V2 (New)</option>
+                <option value="v2-chancenhq">V2 (Chancenhq)</option>
                 <option value="v1">V1 (Original)</option>
               </select>
             </label>
@@ -1652,6 +1653,33 @@ const BENCHMARK_CONFIGS = {
       },
     ],
   },
+  "v2-chancenhq": {
+    key: "v2-chancenhq",
+    displayLabel: "V2 (Chancenhq)",
+    heroTitle: "BullshitBench",
+    heroSubtitle:
+      "Compare detection rates, failure patterns, and example responses across the chancenhq benchmark set.",
+    loadingLabel: "v2-chancenhq",
+    headingPrefix: "BullshitBench v2",
+    titlePrefix: "BullshitBench",
+    questionsPaths: ["../questions.v2-chancenhq.json"],
+    launchFallbackPath: "../data/v2/chancenhq/latest/model_launch_dates.csv",
+    paramsFallbackPath: "../data/v2/chancenhq/latest/model_params.csv",
+    embeddedDatasetKey: "",
+    embeddedLaunchKey: "",
+    showDomainGroup: true,
+    showDomainHeatmap: true,
+    showDomainInsights: true,
+    dataSources: [
+      {
+        name: "Published v2 (Chancenhq) dataset",
+        basePath: "../data/v2/chancenhq/latest",
+        supportsAggregate: true,
+        supportsPanelSummary: true,
+        supportsLaunchMetadata: true,
+      },
+    ],
+  },
   v1: {
     key: "v1",
     displayLabel: "V1 (Original)",
@@ -1683,10 +1711,17 @@ const BENCHMARK_CONFIGS = {
 
 const LOCAL_LAUNCH_OVERRIDES = [];
 
+function resolveBenchmarkVersion(raw) {
+  const normalized = String(raw || "").trim().toLowerCase();
+  if (normalized === "v1") return "v1";
+  if (Object.prototype.hasOwnProperty.call(BENCHMARK_CONFIGS, normalized)) return normalized;
+  return "v2";
+}
+
 function benchmarkVersionFromUrl() {
   const params = new URLSearchParams(window.location.search);
   const raw = String(params.get("benchmark") || params.get("version") || "").trim().toLowerCase();
-  return raw === "v1" ? "v1" : "v2";
+  return resolveBenchmarkVersion(raw);
 }
 function applyCompareStateToUrl(url) {
   if (!(url instanceof URL)) return url;
@@ -1775,7 +1810,7 @@ function inferLaunchRowsFromResponses(responses, launchMap) {
   return [...inferred.values()].map(({ _startedAt, ...row }) => row);
 }
 function setBenchmarkInUrl(nextVersion) {
-  const next = nextVersion === "v1" ? "v1" : "v2";
+  const next = resolveBenchmarkVersion(nextVersion);
   const url = new URL(window.location.href);
   if (next === "v2") url.searchParams.delete("benchmark");
   else url.searchParams.set("benchmark", next);
@@ -4707,7 +4742,7 @@ function bindEvents() {
   const versionSel = document.getElementById("benchmarkVersionSelect");
   if (versionSel) {
     versionSel.addEventListener("change", () => {
-      const next = versionSel.value === "v1" ? "v1" : "v2";
+      const next = resolveBenchmarkVersion(versionSel.value);
       if (next !== S.benchmarkVersion) setBenchmarkInUrl(next);
     });
   }

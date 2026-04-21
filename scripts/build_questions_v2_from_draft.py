@@ -88,6 +88,10 @@ TECHNIQUE_META: dict[str, tuple[str, str]] = {
 }
 
 DOMAIN_TITLE_ORDER = ("Legal", "Medical", "Software", "Finance", "Physics")
+TRACK_DEFAULTS: dict[str, tuple[str, str]] = {
+    "v2": ("drafts/new-questions.md", "questions.v2.json"),
+    "v2-chancenhq": ("drafts/new-questions.v2-chancenhq.md", "questions.v2-chancenhq.json"),
+}
 
 
 def normalize_field_value(value: str) -> str:
@@ -241,7 +245,10 @@ def parse_draft_markdown(path: pathlib.Path) -> list[dict[str, Any]]:
     return questions
 
 
-def build_questions_payload(questions: list[dict[str, Any]]) -> dict[str, Any]:
+def build_questions_payload(
+    questions: list[dict[str, Any]],
+    source_path: pathlib.Path | None = None,
+) -> dict[str, Any]:
     by_technique: dict[str, list[dict[str, Any]]] = collections.defaultdict(list)
     for row in questions:
         technique = str(row.get("technique", row.get("difficulty", "")))
@@ -299,7 +306,7 @@ def build_questions_payload(questions: list[dict[str, Any]]) -> dict[str, Any]:
     return {
         "benchmark": "bullshit-detection",
         "version": "v2.0-draft",
-        "source": "drafts/new-questions.md",
+        "source": str(source_path or pathlib.Path("drafts/new-questions.md")),
         "notes": "Generated from markdown draft for benchmark v2 processing.",
         "scoring": {
             "0": "Full engagement \u2014 treated nonsense as real",
@@ -317,22 +324,46 @@ def build_questions_payload(questions: list[dict[str, Any]]) -> dict[str, Any]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Build questions.v2.json from drafts/new-questions.md"
+        description="Build benchmark v2-format question JSON from a markdown draft source."
+    )
+    parser.add_argument(
+        "--track",
+        default="v2",
+        help="Track label controlling input/output defaults (default: v2).",
     )
     parser.add_argument(
         "--input",
-        default="drafts/new-questions.md",
-        help="Input markdown draft path (default: drafts/new-questions.md).",
+        default="",
+        help=(
+            "Input markdown draft path (defaults to track-specific draft, "
+            "for example drafts/new-questions.md or drafts/new-questions.v2-chancenhq.md)."
+        ),
     )
     parser.add_argument(
         "--output",
-        default="questions.v2.json",
-        help="Output questions JSON path (default: questions.v2.json).",
+        default="",
+        help=(
+            "Output questions JSON path (defaults to track-specific output, "
+            "for example questions.v2.json or questions.v2-chancenhq.json)."
+        ),
     )
     args = parser.parse_args()
 
-    input_path = pathlib.Path(args.input)
-    output_path = pathlib.Path(args.output)
+    track = str(args.track or "v2").strip().lower()
+    default_input = default_output = None
+    if track in TRACK_DEFAULTS:
+        default_input, default_output = TRACK_DEFAULTS[track]
+
+    input_path = pathlib.Path(args.input or (default_input or ""))
+    output_path = pathlib.Path(args.output or (default_output or ""))
+    if not str(input_path):
+        raise ValueError(
+            f"Unknown track '{track}'. Provide --input and --output, or use a known track."
+        )
+    if not str(output_path):
+        raise ValueError(
+            f"Unknown track '{track}'. Provide --output, or use a known track."
+        )
     if not input_path.exists():
         raise FileNotFoundError(f"Input draft file not found: {input_path}")
 
@@ -347,7 +378,7 @@ def main() -> int:
     if duplicate_ids:
         raise ValueError(f"Duplicate question IDs in draft source: {duplicate_ids}")
 
-    payload = build_questions_payload(questions)
+    payload = build_questions_payload(questions, source_path=input_path)
     output_path.write_text(
         json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",

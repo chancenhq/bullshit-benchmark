@@ -54,6 +54,12 @@ Use the v2 config and publish to `data/v2/latest`:
 ./scripts/run_end_to_end.sh --config config.v2.json --viewer-output-dir data/v2/latest --with-additional-judges
 ```
 
+Use the chancenhq variant for the dedicated track:
+
+```bash
+./scripts/run_end_to_end.sh --config config.v2-chancenhq.json --viewer-output-dir data/v2/chancenhq/latest --with-additional-judges
+```
+
 The viewer can switch between versions using the `Benchmark Version` dropdown.
 
 ### v1 to v2 Release Best Practices
@@ -63,9 +69,11 @@ Use this checklist before pushing to GitHub/GitHub Pages:
 1. Keep versioned published datasets side-by-side:
    - v1: `data/latest/*`
    - v2: `data/v2/latest/*`
+   - v2-chancenhq: `data/v2/chancenhq/latest/*`
 2. Do not commit local run history (`runs/*`) or ad hoc temp artifacts.
 3. Rebuild v2 question JSON from draft source when question content changes:
-   - source: `drafts/new-questions.md`
+   - source: `drafts/new-questions.md` (for v2)
+   - source: `drafts/new-questions.v2-chancenhq.md` (for v2-chancenhq)
    - builder: `scripts/build_questions_v2_from_draft.py`
 4. Publish datasets only via `scripts/publish_latest_to_viewer.sh` (or `run_end_to_end.sh` wrapper) so artifact normalization stays consistent.
 5. Smoke-test the published viewer before publish:
@@ -142,8 +150,10 @@ Publishing also exports:
 
 - Main config (v1): `config.json`
 - Main config (v2): `config.v2.json`
+- Chancenhq config (v2-chancenhq): `config.v2-chancenhq.json`
 - Question set (v1): `questions.json`
 - Question set (v2): `questions.v2.json` (generated from `drafts/new-questions.md` via `scripts/build_questions_v2_from_draft.py`)
+- Question set (v2-chancenhq): `questions.v2-chancenhq.json` (generated from `drafts/new-questions.v2-chancenhq.md` via `scripts/build_questions_v2_from_draft.py`)
 - Provider routing is controlled by `collect.model_providers` and `grade.model_providers` (`openrouter` or `openai`; supports `*` and `<org>/*` patterns, e.g. `{"*":"openrouter","gpt-5.3":"openai"}`).
 - Configs include `openai/gpt-5.2-codex` and `openai/gpt-5.3-codex` with reasoning sweeps (`low`, `high`, `xhigh`).
 - Config model lists are aligned to `data/model_metadata/tested_models_inventory.csv` run history, including legacy OpenAI IDs (`openai/gpt-4.1`, `openai/gpt-4o*`, `openai/o3`).
@@ -160,6 +170,7 @@ Publishing also exports:
 - `viewer/index.html`: compatibility redirect to `viewer/index.v2.html`
 - `data/latest/*`: benchmark v1 published dataset
 - `data/v2/latest/*`: benchmark v2 published dataset
+- `data/v2/chancenhq/latest/*`: benchmark v2-chancenhq published dataset
 - `runs/*`: local run history
 
 ## Published Dataset Files
