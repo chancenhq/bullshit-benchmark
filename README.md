@@ -6,20 +6,18 @@
 BullshitBench measures whether models detect nonsense, call it out clearly, and avoid confidently continuing with invalid assumptions.
 
 - Public viewer (latest): https://petergpt.github.io/bullshit-benchmark/viewer/index.v2.html
-- Updated: 2026-04-07
+- Updated: 2026-04-21
 
-## Latest Changelog Entry (2026-04-07)
+## Latest Changelog Entry (2026-04-21)
 
-- Added benchmark runs for the new Google Gemma 4 and Arcee Trinity variants across both published datasets:
-  - `google/gemma-4-26b-a4b-it`
-  - `google/gemma-4-31b-it`
-  - `arcee-ai/trinity-large-thinking`
-- Published the new rows into both viewer tracks:
-  - `v1` (`data/latest`) with `55` questions
-  - `v2` (`data/v2/latest`) with `100` questions
-- Re-ran `google/gemma-4-31b-it` on `v2` with matched-provider `none` and `high` reasoning settings so the public leaderboard reflects the clean same-provider comparison.
-- Added canonical launch-date and model-size metadata for the Gemma 4 and Trinity model families.
-- Updated the viewer publish pipeline to surface recent additions and keep the published JSONL files small enough for GitHub-hosted distribution.
+- Added native-provider OpenRouter benchmark runs for three new v2 model families:
+  - `moonshotai/kimi-k2.6`
+  - `z-ai/glm-5.1`
+  - `qwen/qwen3.6-plus`
+- Published both low/no-reasoning and highest-reasoning rows for each new model into the `v2` viewer track (`data/v2/latest`) with `100` questions.
+- Added canonical launch-date, model-size, access, and license metadata for the new rows.
+- Backfilled model-size/access metadata for closed frontier APIs and public-weight models so release-date, reasoning, and weights charts share the same metadata source.
+- Updated durable v2 config coverage so the published rows are represented outside ad hoc run artifacts.
 - Full details: [CHANGELOG.md](CHANGELOG.md)
 
 ## v2 Changelog Highlights
@@ -32,6 +30,7 @@ BullshitBench measures whether models detect nonsense, call it out clearly, and 
   - Detection Rate Over Time
   - Do Newer Models Perform Better?
   - Does Thinking Harder Help? (tokens/cost toggle)
+  - Model Size and Weights (total/active parameter scatter views)
 
 ## Viewer Walkthrough (v2)
 
@@ -67,13 +66,19 @@ Reasoning scatter (tokens/cost toggle in the viewer) vs. green rate.
 
 ![BullshitBench v2 - Does Thinking Harder Help](docs/images/v2-does-thinking-harder-help.png)
 
+### 6. Model Size and Weights
+
+Total and active parameter scatter views for models with public size metadata.
+
+![BullshitBench v2 - Model Size and Weights](docs/images/v2-model-size-scatters.png)
+
 ## Benchmark Scope (v2)
 
 - `100` nonsense prompts total.
 - `5` domain groups: `software` (40), `finance` (15), `legal` (15), `medical` (15), `physics` (15).
 - `13` nonsense techniques (for example: `plausible_nonexistent_framework`, `misapplied_mechanism`, `nested_nonsense`, `specificity_trap`).
 - `3`-judge panel aggregation (`anthropic/claude-sonnet-4.6`, `openai/gpt-5.2`, `google/gemini-3.1-pro-preview`) using `full` panel mode + `mean` aggregation.
-- Published v2 leaderboard currently includes `120` model/reasoning rows.
+- Published v2 leaderboard currently includes `138` model/reasoning rows.
 
 ## What This Measures
 

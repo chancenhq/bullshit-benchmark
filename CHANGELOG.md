@@ -2,6 +2,26 @@
 
 All notable benchmark, data, and viewer changes are tracked in this file.
 
+## [2.0.9] - 2026-04-21
+
+### Added
+- Added published `v2` benchmark results for:
+  - `moonshotai/kimi-k2.6@reasoning=none`
+  - `moonshotai/kimi-k2.6@reasoning=xhigh`
+  - `z-ai/glm-5.1@reasoning=none`
+  - `z-ai/glm-5.1@reasoning=xhigh`
+  - `qwen/qwen3.6-plus@reasoning=none`
+  - `qwen/qwen3.6-plus@reasoning=xhigh`
+- Added canonical launch-date and model-size metadata for `moonshotai/kimi-k2.6`, `z-ai/glm-5.1`, and `qwen/qwen3.6-plus`.
+- Added canonical release-date metadata for `openrouter/healer-alpha`, `openrouter/hunter-alpha`, and `stepfun/step-3.5-flash`.
+- Added model-size/access metadata for closed/API-only frontier rows and public-weight corrections including `mistralai/mistral-large-2512` and `stepfun/step-3.5-flash`.
+
+### Changed
+- Folded the new Kimi, GLM, and Qwen v2 rows into `config.v2.json` with provider locks and the tested `none`/`xhigh` reasoning settings.
+- Refreshed `data/latest/*` and `data/v2/latest/*` metadata exports so release-date, reasoning, leaderboard, and weights charts share canonical metadata.
+- Rewrote canonical metadata CSVs with proper CSV quoting after finding unescaped commas in several launch-note rows.
+- Updated `data/model_metadata/tested_models_inventory.csv` and `data/model_metadata/model_buckets.csv` for the newly published v2 model families.
+
 ## [2.0.8] - 2026-04-17
 
 ### Added

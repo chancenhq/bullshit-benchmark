@@ -2,25 +2,42 @@
   "collect": {
     "questions": "questions.v2.json",
     "models": [
-      "moonshotai/kimi-k2",
-      "deepseek/deepseek-chat",
-      "deepseek/deepseek-r1",
-      "qwen/qwen3-coder",
-      "baidu/ernie-4.5-vl-424b-a47b",
-      "ai21/jamba-large-1.7",
-      "z-ai/glm-4.5",
-      "qwen/qwen3-235b-a22b",
-      "stepfun/step-3.5-flash",
-      "nvidia/nemotron-3-super-120b-a12b:free",
-      "nvidia/nemotron-3-nano-30b-a3b:free",
-      "nvidia/nemotron-nano-9b-v2:free",
-      "google/gemma-4-26b-a4b-it",
-      "google/gemma-4-31b-it",
-      "arcee-ai/trinity-large-thinking"
+      "moonshotai/kimi-k2.6",
+      "z-ai/glm-5.1",
+      "qwen/qwen3.6-plus"
     ],
     "models_file": "",
     "model_providers": {
       "*": "openrouter"
+    },
+    "model_request_overrides": {
+      "moonshotai/kimi-k2.6": {
+        "provider": {
+          "order": [
+            "Moonshot AI"
+          ],
+          "allow_fallbacks": false,
+          "require_parameters": true
+        }
+      },
+      "z-ai/glm-5.1": {
+        "provider": {
+          "order": [
+            "Z.AI"
+          ],
+          "allow_fallbacks": false,
+          "require_parameters": true
+        }
+      },
+      "qwen/qwen3.6-plus": {
+        "provider": {
+          "order": [
+            "Alibaba"
+          ],
+          "allow_fallbacks": false,
+          "require_parameters": true
+        }
+      }
     },
     "num_runs": 1,
     "parallelism": 16,
@@ -31,48 +48,16 @@
     "store_request_messages": false,
     "store_response_raw": true,
     "model_reasoning_efforts": {
-      "deepseek/deepseek-r1": [
+      "moonshotai/kimi-k2.6": [
         "none",
         "xhigh"
       ],
-      "baidu/ernie-4.5-vl-424b-a47b": [
+      "z-ai/glm-5.1": [
         "none",
         "xhigh"
       ],
-      "z-ai/glm-4.5": [
+      "qwen/qwen3.6-plus": [
         "none",
-        "xhigh"
-      ],
-      "qwen/qwen3-235b-a22b": [
-        "none",
-        "xhigh"
-      ],
-      "stepfun/step-3.5-flash": [
-        "minimal",
-        "xhigh"
-      ],
-      "nvidia/nemotron-3-super-120b-a12b:free": [
-        "none",
-        "xhigh"
-      ],
-      "nvidia/nemotron-3-nano-30b-a3b:free": [
-        "none",
-        "xhigh"
-      ],
-      "nvidia/nemotron-nano-9b-v2:free": [
-        "none",
-        "xhigh"
-      ],
-      "google/gemma-4-26b-a4b-it": [
-        "none",
-        "xhigh"
-      ],
-      "google/gemma-4-31b-it": [
-        "none",
-        "high"
-      ],
-      "arcee-ai/trinity-large-thinking": [
-        "minimal",
         "xhigh"
       ]
     },

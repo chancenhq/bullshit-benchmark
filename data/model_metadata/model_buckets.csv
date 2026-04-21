@@ -38,6 +38,7 @@ minimax/minimax-m2.5,minimax,collector_apac_longtail,apac_longtail
 mistralai/mistral-large-2512,mistralai,collector_frontier_other,frontier_other
 moonshotai/kimi-k2,moonshotai,collector_apac_longtail,apac_longtail
 moonshotai/kimi-k2.5,moonshotai,collector_apac_longtail,apac_longtail
+moonshotai/kimi-k2.6,moonshotai,collector_apac_longtail,apac_longtail
 nvidia/nemotron-3-nano-30b-a3b:free,nvidia,collector_frontier_other,frontier_other
 nvidia/nemotron-3-super-120b-a12b:free,nvidia,collector_frontier_other,frontier_other
 nvidia/nemotron-nano-9b-v2:free,nvidia,collector_frontier_other,frontier_other
@@ -69,6 +70,7 @@ prime-intellect/intellect-3,prime-intellect,collector_frontier_other,frontier_ot
 qwen/qwen3-235b-a22b,qwen,collector_apac_longtail,apac_longtail
 qwen/qwen3-coder,qwen,collector_apac_longtail,apac_longtail
 qwen/qwen3.5-397b-a17b,qwen,collector_apac_longtail,apac_longtail
+qwen/qwen3.6-plus,qwen,collector_apac_longtail,apac_longtail
 stepfun/step-3.5-flash,stepfun,collector_frontier_other,frontier_other
 x-ai/grok-4.1-fast,x-ai,collector_frontier_other,frontier_other
 x-ai/grok-4.20-beta,x-ai,collector_frontier_other,frontier_other
@@ -76,3 +78,4 @@ x-ai/grok-4.20-multi-agent-beta,x-ai,collector_frontier_other,frontier_other
 xiaomi/mimo-v2-flash,xiaomi,collector_apac_longtail,apac_longtail
 z-ai/glm-4.5,z-ai,collector_apac_longtail,apac_longtail
 z-ai/glm-5,z-ai,collector_apac_longtail,apac_longtail
+z-ai/glm-5.1,z-ai,collector_apac_longtail,apac_longtail
